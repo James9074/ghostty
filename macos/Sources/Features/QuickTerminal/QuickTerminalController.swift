@@ -305,9 +305,13 @@ class QuickTerminalController: BaseTerminalController {
         }
 
         if to.isEmpty {
-            // The last surface in the active tab was closed. Close the tab and
-            // either switch to an adjacent one or animate the whole panel out.
-            removeActiveTab()
+            // The last surface in the active tab was closed. If we have tabs,
+            // close this one and switch to an adjacent; otherwise just animate out.
+            if !quickTabs.isEmpty {
+                removeActiveTab()
+            } else {
+                animateOut()
+            }
             return
         }
 
@@ -443,14 +447,26 @@ class QuickTerminalController: BaseTerminalController {
         surfaceTree = newTree
         isSwitchingTabs = false
 
+        let target: Ghostty.SurfaceView?
         if let view {
             focusedSurface = view
+            target = view
         } else if let first = newTree.first {
             focusedSurface = first
+            target = first
+        } else {
+            target = nil
         }
 
-        if let window {
-            makeWindowKey(window)
+        // The new surface view may not be attached to the window yet (SwiftUI
+        // needs a layout pass first). Retry focus the same way animateIn does.
+        guard let window, let target else { return }
+        makeWindowKey(window)
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
+            guard self.visible else { return }
+            if !target.focused {
+                window.makeFirstResponder(target)
+            }
         }
     }
 
