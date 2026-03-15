@@ -459,14 +459,31 @@ class QuickTerminalController: BaseTerminalController {
         }
 
         // The new surface view may not be attached to the window yet (SwiftUI
-        // needs a layout pass first). Retry focus the same way animateIn does.
+        // needs a layout pass first). Poll until the view is in the window,
+        // mirroring the retry logic in makeWindowKey/animateIn.
         guard let window, let target else { return }
         makeWindowKey(window)
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            guard self.visible else { return }
-            if !target.focused {
-                window.makeFirstResponder(target)
-            }
+        focusSurfaceWhenReady(target, in: window, retries: 20)
+    }
+
+    /// Poll until `surface` is attached to `window`, then focus it.
+    /// Each retry waits ~25 ms, giving SwiftUI time to complete layout.
+    private func focusSurfaceWhenReady(
+        _ surface: Ghostty.SurfaceView,
+        in window: NSWindow,
+        retries: Int
+    ) {
+        guard visible else { return }
+        guard retries > 0 else { return }
+
+        // If the view is already in our window and focused we're done.
+        if surface.window == window {
+            window.makeFirstResponder(surface)
+            return
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + .milliseconds(25)) {
+            self.focusSurfaceWhenReady(surface, in: window, retries: retries - 1)
         }
     }
 
