@@ -752,15 +752,10 @@ class QuickTerminalController: BaseTerminalController {
         }
     }
 
-    /// Hides the dock globally (not just NSApp). This is only used if the quick terminal is
-    /// in a conflicting position with the dock.
+    /// Hides the dock using the app's presentation options. This is only used if the quick
+    /// terminal is in a conflicting position with the dock.
     private class HiddenDock {
-        let previousAutoHide: Bool
         private var hidden: Bool = false
-
-        init() {
-            previousAutoHide = Dock.autoHideEnabled
-        }
 
         deinit {
             restore()
@@ -769,14 +764,12 @@ class QuickTerminalController: BaseTerminalController {
         func hide() {
             guard !hidden else { return }
             NSApp.acquirePresentationOption(.autoHideDock)
-            Dock.autoHideEnabled = true
             hidden = true
         }
 
         func restore() {
             guard hidden else { return }
             NSApp.releasePresentationOption(.autoHideDock)
-            Dock.autoHideEnabled = previousAutoHide
             hidden = false
         }
     }
